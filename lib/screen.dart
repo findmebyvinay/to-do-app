@@ -1,35 +1,66 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:hive/hive.dart';
+import 'package:to_do_app/database.dart';
 import 'package:to_do_app/util/todoTile.dart';
 
 import 'util/dialogbox.dart';
 
 
 class Screen extends StatefulWidget {
+  
   const Screen({super.key});
  
   @override
   State<Screen> createState() => _ScreenState();
 }
-
+ 
 class _ScreenState extends State<Screen> {
-  List toDoList=[
-    ["exercise",true],
-    ["study",false],
-    ["write note",true]
-  ];
+  var _mybox = Hive.box("myBox"); 
+ final _controller= TextEditingController();
+ @override
+ 
+ void initState(){
 
+  if(_mybox.get("TODOLIST")== null){
+    Db.createInitialData();
+  }
+  else{
+  Db.loadData();
+  }
+ }
+
+  ToDoDatabase Db =ToDoDatabase();
   void checkBoxChanged(bool ? value, int index){
    setState(() {
-     toDoList[index][1] = ! toDoList[index][1];
+     Db.toDoList[index][1] = ! Db.toDoList[index][1];
    });
+   Db.updateDatabase();
+  }
+  void newSavedTask(){
+  setState(() {
+    Db.toDoList.add([_controller.text,false]);
+  });
+  Navigator.of(context).pop();
+  Db.updateDatabase();
   }
   void newTask(){
      showDialog(
       context: context,
      builder: (context){
-      return Dialogbox();
+      return Dialogbox(
+        controller:_controller,
+        onsave: newSavedTask,
+        onCancel: Navigator.of(context).pop,
+      );
      });
+  }
+  //delete to-do task
+  void deleteTask(int index){
+    setState(() {
+      Db.toDoList.removeAt(index);
+    });
+   Db.updateDatabase(); 
   }
   @override
 
@@ -47,13 +78,16 @@ class _ScreenState extends State<Screen> {
         ),
       ),
    body:ListView.builder(
-    itemCount: toDoList.length,
+    itemCount: Db.toDoList.length,
     itemBuilder: (context, index) {
       return Todotile(onchanged:(value)=>
         checkBoxChanged(value, index)
       ,
-       taskname: toDoList[index][0],
-        taskcompleted:toDoList[index][1]);
+       taskname: Db.toDoList[index][0],
+        taskcompleted:Db.toDoList[index][1],
+        deleteFunction:(context)=>deleteTask(index),
+        );
+        
     },
    ),
    floatingActionButton:FloatingActionButton(
